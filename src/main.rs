@@ -50,134 +50,229 @@ impl Card {
 }
 
 fn deal_cards_init() {}
+fn check_bet(bet: &i32, cash: &i32, totalbets: i32) -> (bool, i32) {
+    let mut booly = false;
+    if totalbets + bet > *cash {
+        println!("You don't have enough cash to bet that much");
+        booly = false;
+    } else {
+        booly = true;
+    }
+    let max_allowed = cash - totalbets;
+    (booly, max_allowed)
+}
 
 fn main() {
     println!("Hello, world!");
     let mut handy = String::new();
+    println!("How many hands would you like to play?");
     io::stdin()
         .read_line(&mut handy)
         .expect("Failed to read line");
     let numHands: u32 = handy.trim().parse().expect("Please type a number!");
-    let mut hands: Vec<Vec<Card>> = Vec::new();
-    for _ in 0..numHands {
-        hands.push(Vec::new());
-    }
-    //init hands
-    for hand in 0..numHands {
-        for _ in 0..2 {
-            hands[hand as usize].push(deal_card());
-        }
-    }
-    println!("{:?}", hands);
-    play_the_damn_game(hands);
-}
 
-fn play_the_damn_game(mut hands: Vec<Vec<Card>>) {
-    let mut hands_left = hands.len() - 1;
-    let mut player_hands_vals = Vec::new();
-    //init dealer hand to check for bj
-    let mut dealer_hand_value = get_hand_value(&hands[0]);
+    let mut dealer_cash = 100;
+    let mut player_cash = 100;
+
+    //play loop
     loop {
-    if dealer_hand_value[0] == 21 {
-        println!("Dealer has BlackJack");
-        println!("Bummer boys");
-        break;
-    }
-    loop {
-        if hands_left == 0 {
-            break;
+        //init hands
+        let mut hands: Vec<Vec<Card>> = Vec::new();
+        for _ in 0..numHands {
+            hands.push(Vec::new());
         }
 
-        for hand in 1..hands.len() {
-            let mut hand_value = get_hand_value(&hands[hand]);
-            let mut dealer_hand_value = get_hand_value(&hands[0]);
+        let mut handbets: Vec<i32> = Vec::new();
+        let mut totalbets = 0;
+        for hand in 0..numHands {
+            for _ in 0..2 {
+                hands[hand as usize].push(deal_card());
+            }
+            //init bets
 
+            if hand == 0 {
+                continue;
+            }
+
+            println!("Hand {} Dealing....", hand);
+            println!("Pick a Bet amount for hand {}", hand);
             loop {
-                if hand_value[0] > 21 {
-                    if hand_value.len() > 1 && hand_value[1] <= 21 {
-                        hand_value.remove(0);
-                    } else {
-                        println!("Hand {}: {:?}", hand, hands[hand]);
-                        println!("Bust!");
-                        player_hands_vals.push(hand_value[0]);
-                        hands_left -= 1;
-                        break;
-                    }
-                } else if hand_value[0] == 21 {
-                    println!("Hand {}: {:?}", hand, hands[hand]);
-                    println!("Perfect Score");
-                    player_hands_vals.push(hand_value[0]);
-                    hands_left -= 1;
-                    break;
+                let mut betty = String::new();
+                io::stdin()
+                    .read_line(&mut betty)
+                    .expect("Failed to read line");
+                let handbet: i32 = betty.trim().parse().expect("Please type a number!");
+
+                let (boolcheck, maxcheck) = check_bet(&handbet, &player_cash, totalbets);
+                if !boolcheck {
+                    println!("Max bet allowed: {}", maxcheck);
+                    println!("Please type a valid bet");
                 } else {
-                    println!("HandValue: {:?}", hand_value);
-                    println!("hit or stand? (h/s)");
-                    println!("Dealer : {:?}", hands[0][0]);
-                    println!("Hand {}: {:?}", hand, hands[hand]);
-
-                    let mut player_move = String::new();
-                    io::stdin()
-                        .read_line(&mut player_move)
-                        .expect("Failed to read line");
-                    let player_move = player_move.trim();
-
-                    if player_move == "h" {
-                        hands[hand].push(deal_card());
-                        hand_value = get_hand_value(&hands[hand]);
-                    } else if player_move == "s" {
-                        player_hands_vals.push(hand_value[0]);
-                        hands_left -= 1;
-                        break;
-                    } else {
-                        println!("Invalid move. Please type 'h' for hit or 's' for stand.");
-                    }
+                    handbets.push(handbet);
+                    totalbets += handbet;
+                    break;
                 }
             }
         }
 
-        // dealers logic
-        
-        loop {
-            if dealer_hand_value[0] > 21 {
-                println!("HandValue: {:?}", dealer_hand_value[0]);
-                println!("Hand {:?}: {:?}", 0, hands[0]);
-                println!("Dealer Busts Congrats To Everyone Who Stood!");
-                break;
-            } else if dealer_hand_value[0] == 21 {
-                println!("HandValue: {:?}", dealer_hand_value[0]);
-                println!("Hand {}: {:?}", 0, hands[0]);
-                println!("Dealer has a perfect score");
-                break;
-            } else if dealer_hand_value[0] >= 17 {
-                println!("HandValue: {:?}", dealer_hand_value[0]);
-                println!("Hand {}: {:?}", 0, hands[0]);
-                println!("Dealer Stands");
-                break;
+        let exchange: Vec<i32> = play_the_damn_game(&mut hands, &mut handbets);
+
+        for exchang in exchange {
+            if exchang > 0 {
+                println!("Player Wins: {}", exchang);
+                player_cash += exchang;
+                dealer_cash -= exchang;
+                println!("Dealer Cash after loss: {}", dealer_cash);
+                println!("Player cash after win: {}", player_cash);
             } else {
-                hands[0].push(deal_card());
-                dealer_hand_value = get_hand_value(&hands[0]);
+                println!("Dealer Wins: {}", exchang);
+                dealer_cash -= exchang;
+                player_cash += exchang;
+                println!("Player Cash after loss: {}", player_cash);
+                println!("Dealer cash after win: {}", dealer_cash);
             }
         }
+        println!("Player Cash: {}", player_cash);
+        println!("Dealer Cash: {}", dealer_cash);
+        println!("Want me to deal you in again? (y/n)");
 
-        // final showdown
-        for i in 0..player_hands_vals.len() {
-            println!("Dealers Hand: {:?}", hands[0]);
-            if dealer_hand_value[0] > player_hands_vals[i] && player_hands_vals[i] <= 21 && dealer_hand_value[0] <= 21 {
-                println!("Dealer Wins hand {}", i + 1);
-            } else if dealer_hand_value[0] < player_hands_vals[i] && player_hands_vals[i] <= 21 {
-                println!("Player Wins hand {}", i + 1);
-            } else if dealer_hand_value[0] == player_hands_vals[i] && player_hands_vals[i] <= 21 {
-                println!("Push on hand {}", i + 1);
-            } else if player_hands_vals[i] > 21 {
-                println!("hand {} should have waited it out", i + 1);
-            
-            } else {
-                println!("zamn thats an edgecase idk wtf");
-            }
+        let mut again = String::new();
+        io::stdin()
+            .read_line(&mut again)
+            .expect("Failed to read line");
+        let againornot: char = again.trim().parse().expect("Please type (y/n)");
+        if againornot == 'n' {
+            break;
         }
     }
 }
+
+fn play_the_damn_game(hands: &mut Vec<Vec<Card>>, handbets: &mut Vec<i32>) -> Vec<i32> {
+    let mut hands_left = hands.len() - 1;
+    let mut player_hands_vals = Vec::new();
+    let mut playerhandwl = Vec::new();
+    let mut exchange = Vec::new();
+    //init dealer hand to check for bj
+    let mut dealer_hand_value = get_hand_value(&hands[0]);
+    'outer: loop {
+        if dealer_hand_value[0] == 21 {
+            println!("Dealer has BlackJack");
+            println!("Bummer boys");
+            break;
+        }
+        loop {
+            if hands_left == 0 {
+                break 'outer;
+            }
+
+            for hand in 1..hands.len() {
+                let mut hand_value = get_hand_value(&hands[hand]);
+                let mut dealer_hand_value = get_hand_value(&hands[0]);
+                if hand_value[0] == 21 && hands[hand].len() == 2 {
+                    println!("Hand {}: {:?}", hand, hands[hand]);
+                    println!("BlackJack!");
+                    player_hands_vals.push(hand_value[0]);
+                    
+                    break;
+                }
+
+                loop {
+                    if hand_value[0] > 21 {
+                        if hand_value.len() > 1 && hand_value[1] <= 21 {
+                            hand_value.remove(0);
+                        } else {
+                            println!("Hand {}: {:?}", hand, hands[hand]);
+                            println!("Bust!");
+                            player_hands_vals.push(hand_value[0]);
+                            hands_left -= 1;
+                            break;
+                        }
+                    } else if hand_value[0] == 21 {
+                        println!("Hand {}: {:?}", hand, hands[hand]);
+                        println!("Perfect Score");
+                        player_hands_vals.push(hand_value[0]);
+                        hands_left -= 1;
+                        break;
+                    } else {
+                        println!("HandValue: {:?}", hand_value);
+                        println!("hit or stand? (h/s)");
+                        println!("Dealer : {:?}", hands[0][0]);
+                        println!("Hand {}: {:?}", hand, hands[hand]);
+
+                        let mut player_move = String::new();
+                        io::stdin()
+                            .read_line(&mut player_move)
+                            .expect("Failed to read line");
+                        let player_move = player_move.trim();
+
+                        if player_move == "h" {
+                            hands[hand].push(deal_card());
+                            hand_value = get_hand_value(&hands[hand]);
+                        } else if player_move == "s" {
+                            player_hands_vals.push(hand_value[0]);
+                            hands_left -= 1;
+                            break;
+                        } else {
+                            println!("Invalid move. Please type 'h' for hit or 's' for stand.");
+                        }
+                    }
+                }
+            }
+
+            // dealers logic
+
+            loop {
+                if dealer_hand_value[0] > 21 {
+                    println!("HandValue: {:?}", dealer_hand_value[0]);
+                    println!("Hand {:?}: {:?}", 0, hands[0]);
+                    println!("Dealer Busts Congrats To Everyone Who Stood!");
+                    break;
+                } else if dealer_hand_value[0] == 21 {
+                    println!("HandValue: {:?}", dealer_hand_value[0]);
+                    println!("Hand {}: {:?}", 0, hands[0]);
+                    println!("Dealer has a perfect score");
+                    break;
+                } else if dealer_hand_value[0] >= 17 {
+                    println!("HandValue: {:?}", dealer_hand_value[0]);
+                    println!("Hand {}: {:?}", 0, hands[0]);
+                    println!("Dealer Stands");
+                    break;
+                } else {
+                    hands[0].push(deal_card());
+                    dealer_hand_value = get_hand_value(&hands[0]);
+                }
+            }
+
+            // final showdown
+            for i in 0..player_hands_vals.len() {
+                println!("Dealers Hand: {:?}", hands[0]);
+                if dealer_hand_value[0] > player_hands_vals[i] && player_hands_vals[i] <= 21 && dealer_hand_value[0] <= 21 {
+                    println!("Dealer Wins hand {}", i + 1);
+                    exchange.push(-handbets[i]);
+                } else if dealer_hand_value[0] < player_hands_vals[i] && player_hands_vals[i] <= 21 {
+                    println!("Player Wins hand {}", i + 1);
+                    exchange.push(handbets[i]);
+                } else if dealer_hand_value[0] == player_hands_vals[i] && player_hands_vals[i] <= 21 {
+                    println!("Push on hand {}", i + 1);
+                    exchange.push(0);
+                } else if player_hands_vals[i] > 21 {
+                    println!("Dealer Wins hand {}", i + 1);
+                    playerhandwl.push(-handbets[i]);
+                } else if dealer_hand_value[0] > player_hands_vals[i] && player_hands_vals[i] <= 21 && dealer_hand_value[0] > 21 {
+                    println!("Player Wins hand {}", i + 1);
+                    exchange.push(handbets[i]);
+                } 
+                else {
+                    println!("zamn thats an edgecase idk wtf");
+                }
+            }
+            break 'outer;
+            
+        }
+    }
+    exchange
 }
+
 fn get_hand_value(hand: &[Card]) -> Vec<u32> {
     let mut hand_value = vec![0];
     for card in hand {
@@ -200,6 +295,7 @@ fn get_hand_value(hand: &[Card]) -> Vec<u32> {
     hand_value.sort_by(|a, b| b.cmp(a));
     hand_value
 }
+
 enum Move {
     Hit,
     Stand,
